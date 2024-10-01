@@ -1,0 +1,80 @@
+using Microsoft.Graph;
+using Microsoft.Identity.Client;
+using System.Net.Http.Headers;
+using System.Threading.Tasks;
+
+public class AADGraphClient
+{
+    private readonly string _clientId = "YOUR_CLIENT_ID";
+    private readonly string _tenantId = "YOUR_TENANT_ID";
+    private readonly string _clientSecret = "YOUR_CLIENT_SECRET";
+    private GraphServiceClient _graphClient;
+
+    public AADGraphClient()
+    {
+        InitializeGraphClient().Wait();
+    }
+
+    private async Task InitializeGraphClient()
+    {
+        // Build Confidential Client Application for acquiring tokens
+        var confidentialClient = ConfidentialClientApplicationBuilder.Create(_clientId)
+            .WithTenantId(_tenantId)
+            .WithClientSecret(_clientSecret)
+            .Build();
+
+        // Set up the auth provider to inject tokens into requests
+        var authProvider = new DelegateAuthenticationProvider(async (requestMessage) =>
+        {
+            var result = await confidentialClient
+                .AcquireTokenForClient(new[] { "https://graph.microsoft.com/.default" })
+                .ExecuteAsync();
+
+            requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", result.AccessToken);
+        });
+
+        _graphClient = new GraphServiceClient(authProvider);
+    }
+
+    public async Task<string> GetUserPresenceAsync(string userId)
+    {
+        // Fetch Teams presence using Microsoft Graph API
+        var presence = await _graphClient.Users[userId].Presence.Request().GetAsync();
+        return presence.Availability; // Returns "Available", "Busy", "DoNotDisturb", etc.
+    }
+}
+
+
+
+public class Agent
+{
+    private AADGraphClient _aadGraphClient;
+
+    public Agent()
+    {
+        _aadGraphClient = new AADGraphClient();
+    }
+
+    public async Task CheckAndHandlePresence(string userId)
+    {
+        // Get user presence from Teams
+        string presence = await _aadGraphClient.GetUserPresenceAsync(userId);
+
+        if (presence == "DoNotDisturb")
+        {
+            // User is in DND mode, queue notifications or wait
+            Console.WriteLine("User is in Do Not Disturb, deferring notification...");
+        }
+        else
+        {
+            // User is available, show notification
+            ShowNotification();
+        }
+    }
+
+    private void ShowNotification()
+    {
+        // Code to display your WPF notification window
+        Console.WriteLine("Showing notification...");
+    }
+}
