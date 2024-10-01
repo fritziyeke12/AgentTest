@@ -1,6 +1,8 @@
 using Microsoft.Graph;
 using Microsoft.Identity.Client;
-using Microsoft.Graph.Authentication;
+using System;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
 
 public class AADGraphClient
@@ -19,21 +21,35 @@ public class AADGraphClient
     {
         // Build Confidential Client Application for acquiring tokens
         var confidentialClient = ConfidentialClientApplicationBuilder.Create(_clientId)
-            .WithTenantId(_tenantId)
             .WithClientSecret(_clientSecret)
+            .WithTenantId(_tenantId)
             .Build();
 
-        // Set up the auth provider to inject tokens into requests
-        var authProvider = new ClientCredentialProvider(confidentialClient);
+        // Get a token for Microsoft Graph
+        var authResult = await confidentialClient.AcquireTokenForClient(new[] { "https://graph.microsoft.com/.default" })
+            .ExecuteAsync();
 
-        // Initialize Graph client with the auth provider
-        _graphClient = new GraphServiceClient(authProvider);
+        // Set up HttpClient for Graph API requests
+        var httpClient = new HttpClient();
+        httpClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", authResult.AccessToken);
+
+        // Initialize Graph client with the authenticated HttpClient
+        _graphClient = new GraphServiceClient(httpClient);
     }
 
     public async Task<string> GetUserPresenceAsync(string userId)
     {
-        // Fetch Teams presence using Microsoft Graph API
-        var presence = await _graphClient.Users[userId].Presence.Request().GetAsync();
-        return presence.Availability; // Returns "Available", "Busy", "DoNotDisturb", etc.
+        try
+        {
+            // Fetch Teams presence using Microsoft Graph API
+            var presence = await _graphClient.Users[userId].Presence.Request().GetAsync();
+            return presence.Availability; // Returns "Available", "Busy", "DoNotDisturb", etc.
+        }
+        catch (ServiceException ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+            return null;
+        }
     }
 }
