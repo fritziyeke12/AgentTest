@@ -8,16 +8,16 @@ public class AADGraphClient
     private readonly string _clientId = "YOUR_CLIENT_ID"; // Replace with your client ID
     private readonly string _tenantId = "YOUR_TENANT_ID"; // Replace with your tenant ID
     private readonly string _clientSecret = "YOUR_CLIENT_SECRET"; // Replace with your client secret
-    private readonly string _graphApiUrl = "https://graph.microsoft.com/v1.0/users/{userId}/presence";
+    private readonly string _graphApiUrl = "https://graph.microsoft.com/v1.0/me/presence"; // Using /me endpoint
 
-    public async Task<string> GetUserPresenceAsync(string userId)
+    public async Task<string> GetMyPresenceAsync()
     {
         var accessToken = await GetAccessTokenAsync();
 
         using (var httpClient = new HttpClient())
         {
             httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-            var response = await httpClient.GetAsync(_graphApiUrl.Replace("{userId}", userId));
+            var response = await httpClient.GetAsync(_graphApiUrl);
 
             if (response.IsSuccessStatusCode)
             {
