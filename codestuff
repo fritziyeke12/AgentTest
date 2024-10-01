@@ -10,6 +10,13 @@ public class AADGraphClient
     private readonly string _clientSecret = "YOUR_CLIENT_SECRET";
     private GraphServiceClient _graphClient;
 
+    public class AADGraphClient
+{
+    private readonly string _clientId = "YOUR_CLIENT_ID";
+    private readonly string _tenantId = "YOUR_TENANT_ID";
+    private readonly string _clientSecret = "YOUR_CLIENT_SECRET";
+    private GraphServiceClient _graphClient;
+
     public AADGraphClient()
     {
         InitializeGraphClient().Wait();
@@ -24,15 +31,9 @@ public class AADGraphClient
             .Build();
 
         // Set up the auth provider to inject tokens into requests
-        var authProvider = new DelegateAuthenticationProvider(async (requestMessage) =>
-        {
-            var result = await confidentialClient
-                .AcquireTokenForClient(new[] { "https://graph.microsoft.com/.default" })
-                .ExecuteAsync();
+        var authProvider = new ClientCredentialProvider(confidentialClient);
 
-            requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", result.AccessToken);
-        });
-
+        // Initialize Graph client with the auth provider
         _graphClient = new GraphServiceClient(authProvider);
     }
 
